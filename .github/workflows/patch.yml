@@ -1,0 +1,104 @@
+name: Patch APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      apk_url:
+        description: 'Direct URL to the game APK (public)'
+        required: false
+        default: ''
+      apk_artifact:
+        description: 'Or: name of an uploaded artifact containing game.apk'
+        required: false
+        default: ''
+      sign:
+        description: 'Sign the patched APK (requires KEYSTORE secrets)'
+        type: boolean
+        default: false
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Setup Android SDK (zipalign/apksigner)
+        uses: android-actions/setup-android@v3
+        if: inputs.sign == true
+
+      - name: Accept licenses
+        if: inputs.sign == true
+        run: yes | sdkmanager --licenses >/dev/null 2>&1 || true
+
+      - name: Download APK from URL
+        if: inputs.apk_url != ''
+        run: |
+          curl -L -o game.apk "${{ inputs.apk_url }}"
+          ls -la game.apk
+
+      - name: Download APK from artifact
+        if: inputs.apk_artifact != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.apk_artifact }}
+          path: download
+      - name: Locate APK from artifact
+        if: inputs.apk_artifact != ''
+        run: |
+          find download -name '*.apk' | head -1 | xargs -I{} cp {} game.apk
+          ls -la game.apk
+
+      - name: Fail if no APK
+        if: inputs.apk_url == '' && inputs.apk_artifact == ''
+        run: |
+          echo "::error::Provide apk_url or apk_artifact"
+          exit 1
+
+      - name: Run patch
+        run: |
+          python3 patch.py game.apk game-patched.apk --resources resources
+
+      - name: Verify patched contents
+        run: |
+          python3 - <<'EOF'
+          import zipfile
+          with zipfile.ZipFile("game-patched.apk") as z:
+              n = z.namelist()
+              ok_libmain = any(x == "lib/arm64-v8a/libmain.so" for x in n)
+              ok_fusion  = "lib/arm64-v8a/libfusion.so" in n
+              ok_dotnet  = sum(1 for x in n if x.startswith("assets/dotnet/") and x.endswith(".dll"))
+              ok_bep     = sum(1 for x in n if "assets/BepInEx/core/" in x and x.endswith(".dll"))
+              print(f"libmain={ok_libmain} libfusion={ok_fusion} dotnet={ok_dotnet} bepinex_core={ok_bep}")
+              assert ok_libmain and ok_fusion and ok_dotnet >= 100 and ok_bep >= 20
+          EOF
+
+      - name: Sign APK
+        if: inputs.sign == true
+        run: |
+          BT="$ANDROID_SDK_ROOT/build-tools/$(ls $ANDROID_SDK_ROOT/build-tools | head -1)"
+          KEYSTORE="${{ secrets.KEYSTORE_BASE64 }}"
+          if [ -n "$KEYSTORE" ]; then
+            echo "$KEYSTORE" | base64 -d > release.keystore
+            "$BT/zipalign" -f -p 4 game-patched.apk game-aligned.apk
+            mv game-aligned.apk game-patched.apk
+            "$BT/apksigner" sign --ks release.keystore --ks-pass pass:android \
+              --ks-key-alias androiddebugkey --min-sdk-version 24 \
+              --out game-patched.signed.apk game-patched.apk
+            mv game-patched.signed.apk game-patched.apk
+            "$BT/apksigner" verify game-patched.apk
+          else
+            echo "::warning::KEYSTORE_BASE64 secret not set; APK left unsigned"
+          fi
+
+      - name: Upload patched APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: patched-apk
+          path: game-patched.apk
+          if-no-files-found: error

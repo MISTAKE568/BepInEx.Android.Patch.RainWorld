@@ -1,0 +1,11 @@
+# Keystores / signing material
+*.keystore
+*.jks
+*.aligned
+*.signed
+
+# Input / output APKs
+*.apk
+
+# Python
+__pycache__/

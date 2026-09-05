@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AssemblyName>RainWorldCwdFix</AssemblyName>
+    <RootNamespace>RainWorldCwdFix</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="BepInEx.Core">
+      <HintPath>../../resources/BepInEx/core/BepInEx.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="BepInEx.Unity.IL2CPP">
+      <HintPath>../../resources/BepInEx/core/BepInEx.Unity.IL2CPP.dll</HintPath>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>../../resources/BepInEx/core/0Harmony.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+</Project>
