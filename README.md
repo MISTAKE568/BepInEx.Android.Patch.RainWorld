@@ -1,5 +1,7 @@
 # BepInEx.Android.Patch.RainWorld
 
+**中文** | [English](README.en.md)
+
 对雨世界1.9移植版专用的 BepInEx 注入 APK patch 工具
 
 ## 对上游的修改
