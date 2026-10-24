@@ -8,6 +8,7 @@
 - 内置 `RainWorldCwdFix` 插件：修复游戏相对路径解析（进程 CWD 固定为 `/`），并清理 `clr-debug-pipe-*` 垃圾文件
 - `BepInEx.cfg`：`UnityLogListening = false`
 - `unity-libs`：固定 2020.3.38
+- `Il2CppInterop.Runtime.dll`：删除了 GenericMethod hook
 
 ## 许可证
 
